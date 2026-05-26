@@ -1,6 +1,5 @@
 """Main entry point for the A-Maze-ing project."""
 
-
 import sys
 from config_parser import load_config
 from maze_generator import MazeGenerator
@@ -39,6 +38,8 @@ def main() -> None:
     # generator.print_debug()
     print(generator.get_neighbors((0, 0)))
     print(generator.get_neighbors((1, 1)))
+    generator.generate()
+    generator.print_debug()
 
 
 if __name__ == "__main__":

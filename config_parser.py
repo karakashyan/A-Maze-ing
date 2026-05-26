@@ -1,6 +1,5 @@
 """Configuration parser for the A-Maze-ing project."""
 
-
 from typing import Any
 
 

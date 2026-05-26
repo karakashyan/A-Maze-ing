@@ -1,5 +1,7 @@
 """Maze generation logic for the A-Maze-ing project."""
 
+import random
+
 
 class MazeGenerator:
     """Generate and store a maze structure."""
@@ -49,6 +51,7 @@ class MazeGenerator:
             cell2["S"] = False
 
     def get_neighbors(self, cell: tuple[int, int]) -> list[tuple[int, int]]:
+        """Return all valid neighbours inside the maze bounds."""
         row, col = cell
         neighbors = []
         if row > 0:
@@ -60,6 +63,29 @@ class MazeGenerator:
         if col < self.width - 1:
             neighbors.append((row, col + 1))
         return neighbors
+
+    def generate(self) -> None:
+        random.seed(self.seed)
+        start = (0, 0)
+        visited: set[tuple[int, int]] = set()
+        stack: list[tuple[int, int]] = []
+
+        visited.add(start)
+        stack.append(start)
+        while stack:
+            current = stack[-1]
+            unvisited_neighbors = []
+            for neighbor in self.get_neighbors(current):
+                if neighbor not in visited:
+                    unvisited_neighbors.append(neighbor)
+
+            if unvisited_neighbors:
+                next_cell = random.choice(unvisited_neighbors)
+                self.remove_wall_between(current, next_cell)
+                visited.add(next_cell)
+                stack.append(next_cell)
+            else:
+                stack.pop()
 
     def print_debug(self) -> None:
         """Print the maze grid for debugging."""
