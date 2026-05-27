@@ -36,10 +36,20 @@ def main() -> None:
 
     # generator.remove_wall_between((0, 0), (1, 0))
     # generator.print_debug()
-    print(generator.get_neighbors((0, 0)))
-    print(generator.get_neighbors((1, 1)))
+    # print(generator.get_neighbors((0, 0)))
+    # print(generator.get_neighbors((1, 1)))
     generator.generate()
-    generator.print_debug()
+    print(generator.maze_to_hex_lines())
+    # generator.print_debug()
+    entry_x, entry_y = config["entry"]
+    exit_x, exit_y = config["exit"]
+
+    entry = (entry_y, entry_x)
+    exit_cell = (exit_y, exit_x)
+    path_cells = generator.find_shortest_path(entry, exit_cell)
+    path_directions = generator.path_to_directions(path_cells)
+    generator.save_hex(
+        config["output_file"], entry, exit_cell, path_directions)
 
 
 if __name__ == "__main__":
