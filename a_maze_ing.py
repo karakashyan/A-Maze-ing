@@ -41,11 +41,11 @@ def main() -> None:
     generator.generate()
     print(generator.maze_to_hex_lines())
     # generator.print_debug()
-    entry_x, entry_y = config["entry"]
-    exit_x, exit_y = config["exit"]
+    entry_col, entry_row = config["entry"]
+    exit_col,  exit_row  = config["exit"]
 
-    entry = (entry_y, entry_x)
-    exit_cell = (exit_y, exit_x)
+    entry     = (entry_row, entry_col)
+    exit_cell = (exit_row,  exit_col)
     path_cells = generator.find_shortest_path(entry, exit_cell)
     path_directions = generator.path_to_directions(path_cells)
     generator.save_hex(

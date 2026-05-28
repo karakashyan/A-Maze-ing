@@ -129,8 +129,7 @@ class MazeGenerator:
                 file.write(line + "\n")
             file.write("\n")
             for row, col in (entry, exit_cell):
-                entry_str = f"{row},{col}\n"
-                file.write(entry_str)
+                file.write(f"{col},{row}\n")
             file.write(path_directions)
 
     def get_open_neighbors(
