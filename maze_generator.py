@@ -55,14 +55,23 @@ class MazeGenerator:
         """Return all valid neighbours inside the maze bounds."""
         row, col = cell
         neighbors = []
+        blocked_cells = set(self.get_42_cells())
         if row > 0:
-            neighbors.append((row - 1, col))
+            neighbor = (row - 1, col)
+            if neighbor not in blocked_cells:
+                neighbors.append(neighbor)
         if row < self.height - 1:
-            neighbors.append((row + 1, col))
+            neighbor = (row + 1, col)
+            if neighbor not in blocked_cells:
+                neighbors.append(neighbor)
         if col > 0:
-            neighbors.append((row, col - 1))
+            neighbor = (row, col - 1)
+            if neighbor not in blocked_cells:
+                neighbors.append(neighbor)
         if col < self.width - 1:
-            neighbors.append((row, col + 1))
+            neighbor = (row, col + 1)
+            if neighbor not in blocked_cells:
+                neighbors.append(neighbor)
         return neighbors
 
     def generate(self) -> None:
@@ -89,6 +98,55 @@ class MazeGenerator:
                 stack.append(next_cell)
             else:
                 stack.pop()
+
+    def get_42_cells(self) -> list[tuple[int, int]]:
+        """Return cells used to draw the 42 pattern."""
+        start_row = (self.height - 5) // 2
+        start_col = (self.width - 7) // 2
+        cells = [
+            (0, 0), (0, 4), (0, 5), (0, 6),
+            (1, 0), (1, 6),
+            (2, 0), (2, 1), (2, 2), (2, 4), (2, 5), (2, 6),
+            (3, 2), (3, 4),
+            (4, 2), (4, 4), (4, 5), (4, 6),
+        ]
+        real_cells = []
+        for row, col in cells:
+            real_cells.append((start_row + row, start_col + col))
+        return real_cells
+
+    def add_42_pattern(
+        self,
+        entry: tuple[int, int],
+        exit_cell: tuple[int, int],
+    ) -> None:
+        """Add a visible 42 pattern using fully closed cells."""
+        if self.width < 7 or self.height < 5:
+            print("Warning: maze is too small for the 42 pattern!")
+            return
+        cells = self.get_42_cells()
+        for c in cells:
+            if c == entry or c == exit_cell:
+                continue
+            self.close_cell(c)
+
+    def close_cell(self, cell: tuple[int, int]) -> None:
+        """Close all walls around one cell and update neighbouring walls."""
+        row, col = cell
+
+        self.grid[row][col]["N"] = True
+        self.grid[row][col]["E"] = True
+        self.grid[row][col]["S"] = True
+        self.grid[row][col]["W"] = True
+
+        if row > 0:
+            self.grid[row - 1][col]["S"] = True
+        if col < self.width - 1:
+            self.grid[row][col + 1]["W"] = True
+        if row < self.height - 1:
+            self.grid[row + 1][col]["N"] = True
+        if col > 0:
+            self.grid[row][col - 1]["E"] = True
 
     def cell_to_hex(self, cell: dict[str, bool]) -> str:
         """Convert one maze cell to a hexadecimal wall value."""
@@ -130,7 +188,7 @@ class MazeGenerator:
             file.write("\n")
             for row, col in (entry, exit_cell):
                 file.write(f"{col},{row}\n")
-            file.write(path_directions)
+            file.write(path_directions + "\n")
 
     def get_open_neighbors(
         self,
@@ -140,18 +198,27 @@ class MazeGenerator:
         row, col = cell
         cell_walls = self.grid[row][col]
         neighbors = []
+        blocked_cells = set(self.get_42_cells())
 
         if not cell_walls["N"] and row > 0:
-            neighbors.append((row - 1, col))
+            neighbor = (row - 1, col)
+            if neighbor not in blocked_cells:
+                neighbors.append(neighbor)
 
         if not cell_walls["E"] and col < self.width - 1:
-            neighbors.append((row, col + 1))
+            neighbor = (row, col + 1)
+            if neighbor not in blocked_cells:
+                neighbors.append(neighbor)
 
         if not cell_walls["S"] and row < self.height - 1:
-            neighbors.append((row + 1, col))
+            neighbor = (row + 1, col)
+            if neighbor not in blocked_cells:
+                neighbors.append(neighbor)
 
         if not cell_walls["W"] and col > 0:
-            neighbors.append((row, col - 1))
+            neighbor = (row, col - 1)
+            if neighbor not in blocked_cells:
+                neighbors.append(neighbor)
 
         return neighbors
 

@@ -3,6 +3,7 @@
 import sys
 from config_parser import load_config
 from maze_generator import MazeGenerator
+from interactive import run_interactive
 
 
 def main() -> None:
@@ -25,31 +26,34 @@ def main() -> None:
         print(f"Error: missing required key: {error}")
         return
 
-    print("Config loaded successfully:")
-    print(config)
-
     generator = MazeGenerator(
         width=config["width"],
         height=config["height"],
         seed=config["seed"],
     )
 
-    # generator.remove_wall_between((0, 0), (1, 0))
-    # generator.print_debug()
-    # print(generator.get_neighbors((0, 0)))
-    # print(generator.get_neighbors((1, 1)))
     generator.generate()
-    print(generator.maze_to_hex_lines())
-    # generator.print_debug()
-    entry_col, entry_row = config["entry"]
-    exit_col,  exit_row  = config["exit"]
 
-    entry     = (entry_row, entry_col)
-    exit_cell = (exit_row,  exit_col)
+    entry_col, entry_row = config["entry"]
+    exit_col, exit_row = config["exit"]
+
+    entry = (entry_row, entry_col)
+    exit_cell = (exit_row, exit_col)
+
+    generator.add_42_pattern(entry, exit_cell)
+
     path_cells = generator.find_shortest_path(entry, exit_cell)
     path_directions = generator.path_to_directions(path_cells)
+
     generator.save_hex(
-        config["output_file"], entry, exit_cell, path_directions)
+        config["output_file"],
+        entry,
+        exit_cell,
+        path_directions,
+    )
+
+    # render_maze(generator, entry, exit_cell, path_cells)
+    run_interactive(generator, entry, exit_cell, path_cells)
 
 
 if __name__ == "__main__":
