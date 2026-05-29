@@ -40,6 +40,10 @@ def main() -> None:
     entry = (entry_row, entry_col)
     exit_cell = (exit_row, exit_col)
 
+    if not generator.validate_e_x(entry, exit_cell):
+        print("Error: entry or exit overlaps with the 42 pattern")
+        return
+
     generator.add_42_pattern(entry, exit_cell)
 
     path_cells = generator.find_shortest_path(entry, exit_cell)
@@ -52,7 +56,6 @@ def main() -> None:
         path_directions,
     )
 
-    # render_maze(generator, entry, exit_cell, path_cells)
     run_interactive(generator, entry, exit_cell, path_cells)
 
 

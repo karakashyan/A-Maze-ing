@@ -12,6 +12,7 @@ class MazeGenerator:
         self.height = height
         self.seed = seed
         self.grid = self._create_grid()
+        self._42_cells = set(self.get_42_cells())
 
     def _create_grid(self) -> list[list[dict[str, bool]]]:
         """Create a grid where every cell starts with all walls closed."""
@@ -55,22 +56,22 @@ class MazeGenerator:
         """Return all valid neighbours inside the maze bounds."""
         row, col = cell
         neighbors = []
-        blocked_cells = set(self.get_42_cells())
+
         if row > 0:
             neighbor = (row - 1, col)
-            if neighbor not in blocked_cells:
+            if neighbor not in self._42_cells:
                 neighbors.append(neighbor)
         if row < self.height - 1:
             neighbor = (row + 1, col)
-            if neighbor not in blocked_cells:
+            if neighbor not in self._42_cells:
                 neighbors.append(neighbor)
         if col > 0:
             neighbor = (row, col - 1)
-            if neighbor not in blocked_cells:
+            if neighbor not in self._42_cells:
                 neighbors.append(neighbor)
         if col < self.width - 1:
             neighbor = (row, col + 1)
-            if neighbor not in blocked_cells:
+            if neighbor not in self._42_cells:
                 neighbors.append(neighbor)
         return neighbors
 
@@ -114,6 +115,10 @@ class MazeGenerator:
         for row, col in cells:
             real_cells.append((start_row + row, start_col + col))
         return real_cells
+
+    def validate_e_x(self, e: tuple[int, int], x: tuple[int, int]) -> bool:
+        """Return True if entry and exit do not overlap with the 42 pattern."""
+        return e not in self._42_cells and x not in self._42_cells
 
     def add_42_pattern(
         self,
@@ -198,26 +203,25 @@ class MazeGenerator:
         row, col = cell
         cell_walls = self.grid[row][col]
         neighbors = []
-        blocked_cells = set(self.get_42_cells())
 
         if not cell_walls["N"] and row > 0:
             neighbor = (row - 1, col)
-            if neighbor not in blocked_cells:
+            if neighbor not in self._42_cells:
                 neighbors.append(neighbor)
 
         if not cell_walls["E"] and col < self.width - 1:
             neighbor = (row, col + 1)
-            if neighbor not in blocked_cells:
+            if neighbor not in self._42_cells:
                 neighbors.append(neighbor)
 
         if not cell_walls["S"] and row < self.height - 1:
             neighbor = (row + 1, col)
-            if neighbor not in blocked_cells:
+            if neighbor not in self._42_cells:
                 neighbors.append(neighbor)
 
         if not cell_walls["W"] and col > 0:
             neighbor = (row, col - 1)
-            if neighbor not in blocked_cells:
+            if neighbor not in self._42_cells:
                 neighbors.append(neighbor)
 
         return neighbors
