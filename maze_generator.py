@@ -2,17 +2,20 @@
 
 import random
 from collections import deque
+from collections.abc import Iterator
 
 
 class MazeGenerator:
     """Generate and store a maze structure."""
-    def __init__(self, width: int, height: int, seed: int) -> None:
+    def __init__(self, width: int, height: int,
+                 seed: int, perfect: bool) -> None:
         """Initialize the maze generator."""
         self.width = width
         self.height = height
         self.seed = seed
         self.grid = self._create_grid()
         self._42_cells = set(self.get_42_cells())
+        self.perfect = perfect
 
     def _create_grid(self) -> list[list[dict[str, bool]]]:
         """Create a grid where every cell starts with all walls closed."""
@@ -100,7 +103,11 @@ class MazeGenerator:
             else:
                 stack.pop()
 
-    def generate_steps(self):
+        if not self.perfect:
+            self.add_loops(self.width * self.height // 25)
+
+    def generate_steps(
+            self) -> Iterator[tuple[tuple[int, int], tuple[int, int]]]:
         """Generate maze step-by-step for animation (curses-friendly)."""
         random.seed(self.seed)
 
@@ -127,6 +134,9 @@ class MazeGenerator:
                 stack.append(next_cell)
             else:
                 stack.pop()
+
+        if not self.perfect:
+            self.add_loops(self.width * self.height // 25)
 
     def get_42_cells(self) -> list[tuple[int, int]]:
         """Return cells used to draw the 42 pattern."""
@@ -180,6 +190,85 @@ class MazeGenerator:
             self.grid[row + 1][col]["N"] = True
         if col > 0:
             self.grid[row][col - 1]["E"] = True
+
+    def would_create_3x3_open_area(
+        self,
+        c1: tuple[int, int],
+        c2: tuple[int, int],
+    ) -> bool:
+        """Return True if opening this wall creates a 3x3 open area."""
+        row1, col1 = c1
+        row2, col2 = c2
+
+        old_cell1 = self.grid[row1][col1].copy()
+        old_cell2 = self.grid[row2][col2].copy()
+
+        self.remove_wall_between(c1, c2)
+
+        min_row = max(0, min(row1, row2) - 2)
+        max_row = min(self.height - 3, max(row1, row2))
+        min_col = max(0, min(col1, col2) - 2)
+        max_col = min(self.width - 3, max(col1, col2))
+
+        for start_row in range(min_row, max_row + 1):
+            for start_col in range(min_col, max_col + 1):
+                is_open = True
+
+                for row in range(start_row, start_row + 3):
+                    for col in range(start_col, start_col + 2):
+                        if self.grid[row][col]["E"]:
+                            is_open = False
+
+                for row in range(start_row, start_row + 2):
+                    for col in range(start_col, start_col + 3):
+                        if self.grid[row][col]["S"]:
+                            is_open = False
+
+                if is_open:
+                    self.grid[row1][col1] = old_cell1
+                    self.grid[row2][col2] = old_cell2
+                    return True
+
+        self.grid[row1][col1] = old_cell1
+        self.grid[row2][col2] = old_cell2
+
+        return False
+
+    def add_loops(self, count: int) -> None:
+        """Open extra walls to make the maze non-perfect."""
+        possible_walls: list[tuple[tuple[int, int], tuple[int, int]]] = []
+
+        for row in range(self.height):
+            for col in range(self.width):
+                cell = (row, col)
+                if cell in self._42_cells:
+                    continue
+
+                if col < self.width - 1:
+                    neighbor = (row, col + 1)
+
+                    if neighbor not in self._42_cells and \
+                            self.grid[row][col]["E"]:
+                        possible_walls.append((cell, neighbor))
+
+                if row < self.height - 1:
+                    neighbor = (row + 1, col)
+
+                    if neighbor not in self._42_cells and \
+                            self.grid[row][col]["S"]:
+                        possible_walls.append((cell, neighbor))
+        random.shuffle(possible_walls)
+
+        opened = 0
+        for cell, neighbor in possible_walls:
+            if opened == count:
+                break
+
+            if self.would_create_3x3_open_area(cell, neighbor):
+                continue
+
+            self.remove_wall_between(cell, neighbor)
+            opened += 1
 
     def cell_to_hex(self, cell: dict[str, bool]) -> str:
         """Convert one maze cell to a hexadecimal wall value."""
