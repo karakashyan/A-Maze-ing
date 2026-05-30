@@ -1,103 +1,177 @@
 """Interactive terminal display for the A-Maze-ing project."""
 
 import curses
-
 from maze_generator import MazeGenerator
 from renderer import render_maze_lines
 
+_WALL   = 1
+_ENTRY  = 7
+_EXIT   = 8
+_PATH_A = 9
+_PATH_B = 10
+_PATH_C = 11
+_42     = 12
+_BAR    = 13
 
-def run_interactive(
-    generator: MazeGenerator,
-    entry: tuple[int, int],
-    exit_cell: tuple[int, int],
-    path: list[tuple[int, int]],
-) -> None:
-    """Run interactive maze display."""
+_WALL_COLORS = [
+    curses.COLOR_WHITE,
+    curses.COLOR_CYAN,
+    curses.COLOR_GREEN,
+    curses.COLOR_YELLOW,
+    curses.COLOR_MAGENTA,
+    curses.COLOR_BLUE,
+]
 
-    def _main(stdscr: curses.window) -> None:
-        current_generator = generator
-        current_path = path
-        current_seed = generator.seed
-        show_path = True
-        color_i = 1
+_PATH_DOTS = ["·", "•", "◆"]
+ENTRY_LABEL = " E "
+EXIT_LABEL  = " X "
 
+
+def _path_pair(idx, length):
+    """Return the color pair index for a path cell based on its progress."""
+
+    if length == 0:
+        return _PATH_A
+    progress = idx / length
+    if progress < 0.4:
+        return _PATH_A
+    if progress < 0.75:
+        return _PATH_B
+    return _PATH_C
+
+
+def run_interactive(generator, entry, exit_cell, path):
+    """Launch the curses display loop for the maze."""
+
+    def _main(stdscr):
         curses.start_color()
         curses.use_default_colors()
+        curses.curs_set(0)
 
-        curses.init_pair(1, curses.COLOR_WHITE, -1)
-        curses.init_pair(2, curses.COLOR_GREEN, -1)
-        curses.init_pair(3, curses.COLOR_CYAN, -1)
-        curses.init_pair(4, curses.COLOR_YELLOW, -1)
-        curses.init_pair(5, curses.COLOR_MAGENTA, -1)
-        curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_MAGENTA)
+        curses.init_pair(_ENTRY,  curses.COLOR_GREEN,  -1)
+        curses.init_pair(_EXIT,   curses.COLOR_RED,    -1)
+        curses.init_pair(_PATH_A, curses.COLOR_GREEN,  -1)
+        curses.init_pair(_PATH_B, curses.COLOR_YELLOW, -1)
+        curses.init_pair(_PATH_C, curses.COLOR_RED,    -1)
+        curses.init_pair(_42,     curses.COLOR_BLACK,  curses.COLOR_MAGENTA)
+        curses.init_pair(_BAR,    curses.COLOR_BLACK,  curses.COLOR_WHITE)
+
+        cur_gen   = generator
+        cur_path  = path
+        cur_seed  = generator.seed
+        show_path = True
+        wall_i    = 0
+        animate = False
+
+        def regenerate():
+            nonlocal cur_gen, cur_seed, cur_path
+
+            cur_gen = MazeGenerator(
+                cur_gen.width,
+                cur_gen.height,
+                cur_seed,
+            )
+
+            if animate:
+                for _ in cur_gen.generate_steps():
+                    stdscr.clear()
+
+                    lines = render_maze_lines(cur_gen, entry, exit_cell, [])
+
+                    for row_i, line in enumerate(lines):
+                        stdscr.addstr(row_i, 0, line)
+
+                    stdscr.refresh()
+                    curses.napms(15)
+            else:
+                cur_gen.generate()
+
+            cur_gen.add_42_pattern(entry, exit_cell)
+            cur_path = cur_gen.find_shortest_path(entry, exit_cell)
+
+        def _init_wall_pair():
+            curses.init_pair(_WALL, _WALL_COLORS[wall_i], -1)
+
+        _init_wall_pair()
 
         while True:
             stdscr.clear()
+            _init_wall_pair()
 
-            if show_path:
-                visible_path = current_path
-            else:
-                visible_path = []
+            vis_path   = cur_path if show_path else []
+            path_index = {cell: idx for idx, cell in enumerate(vis_path)}
+            path_len   = max(len(vis_path) - 1, 1)
+            lines      = render_maze_lines(cur_gen, entry, exit_cell, vis_path)
 
-            lines = render_maze_lines(
-                current_generator,
-                entry,
-                exit_cell,
-                visible_path,
-            )
             try:
-                for row_ind, line in enumerate(lines):
-                    stdscr.addstr(row_ind, 0, line, curses.color_pair(color_i))
+                wall_attr  = curses.color_pair(_WALL)
+                outer_attr = wall_attr | curses.A_BOLD
 
-                for row, col in current_generator.get_42_cells():
-                    if (row, col) == entry or (row, col) == exit_cell:
+                for row_i, line in enumerate(lines):
+                    stdscr.addstr(row_i, 0, line, wall_attr)
+
+                for r in range(cur_gen.height):
+                    screen_row = r * 2 + 1
+                    for c in range(cur_gen.width):
+                        screen_col = c * 4 + 1
+                        cell = (r, c)
+                        if cell == entry:
+                            stdscr.addstr(
+                                screen_row, screen_col, ENTRY_LABEL,
+                                curses.color_pair(_ENTRY) | curses.A_REVERSE | curses.A_BOLD,
+                            )
+                        elif cell == exit_cell:
+                            stdscr.addstr(
+                                screen_row, screen_col, EXIT_LABEL,
+                                curses.color_pair(_EXIT) | curses.A_REVERSE | curses.A_BOLD,
+                            )
+                        elif cell in path_index:
+                            idx  = path_index[cell]
+                            dot  = _PATH_DOTS[min(int(idx / path_len * 3), 2)]
+                            pair = _path_pair(idx, path_len)
+                            stdscr.addstr(screen_row, screen_col, f" {dot} ", curses.color_pair(pair))
+
+                for row, col in cur_gen.get_42_cells():
+                    if (row, col) in (entry, exit_cell):
                         continue
+                    stdscr.addstr(row * 2 + 1, col * 4 + 1, "   ", curses.color_pair(_42))
 
-                    screen_row = row * 2 + 1
-                    screen_col = col * 4 + 1
+                stdscr.addstr(0, 0, lines[0], outer_attr)
+                stdscr.addstr(len(lines) - 1, 0, lines[-1], outer_attr)
+                for row_i in range(1, len(lines) - 1):
+                    line = lines[row_i]
+                    stdscr.addstr(row_i, 0, line[0], outer_attr)
+                    stdscr.addstr(row_i, len(line) - 1, line[-1], outer_attr)
 
-                    stdscr.addstr(
-                        screen_row,
-                        screen_col,
-                        "   ",
-                        curses.color_pair(6),
-                    )
-                stdscr.addstr(
-                    len(lines) + 1,
-                    0,
-                    "q - quit | p - show/hide path "
-                    "| r - regenerate | c - colour",
-                )
+                menu_y = len(lines) + 1
+                path_status = "ON" if show_path else "OFF"
+
+                stdscr.addstr(menu_y,     0, "=== A-Maze-ing ===", curses.color_pair(_BAR))
+                stdscr.addstr(menu_y + 1, 0, f"Seed: {cur_seed}")
+
+                stdscr.addstr(menu_y + 3, 0, "r - Re-generate a new maze")
+                stdscr.addstr(menu_y + 4, 0, f"p - Show/Hide path from entry to exit ({path_status})")
+                stdscr.addstr(menu_y + 5, 0, "c - Rotate maze colors")
+                stdscr.addstr(menu_y + 6, 0, f"a - Animated regenerate ({'ON' if animate else 'OFF'})")
+                stdscr.addstr(menu_y + 7, 0, "q - Quit")
             except curses.error:
                 pass
 
             stdscr.refresh()
-
             key = stdscr.getch()
 
             if key == ord("q"):
                 break
-
-            if key == ord("p"):
+            elif key == ord("p"):
                 show_path = not show_path
-
-            if key == ord("r"):
-                current_seed += 1
-                current_generator = MazeGenerator(
-                    current_generator.width,
-                    current_generator.height,
-                    current_seed,
-                )
-                current_generator.generate()
-                current_generator.add_42_pattern(entry, exit_cell)
-                current_path = current_generator.find_shortest_path(
-                    entry,
-                    exit_cell,
-                )
-
-            if key == ord("c"):
-                color_i += 1
-                if color_i > 5:
-                    color_i = 1
+            elif key == ord("a"):
+                animate = not animate
+                cur_seed += 1
+                regenerate()
+            elif key == ord("r"):
+                cur_seed += 1
+                regenerate()
+            elif key == ord("c"):
+                wall_i = (wall_i + 1) % len(_WALL_COLORS)
 
     curses.wrapper(_main)

@@ -100,6 +100,34 @@ class MazeGenerator:
             else:
                 stack.pop()
 
+    def generate_steps(self):
+        """Generate maze step-by-step for animation (curses-friendly)."""
+        random.seed(self.seed)
+
+        start = (0, 0)
+        visited: set[tuple[int, int]] = {start}
+        stack: list[tuple[int, int]] = [start]
+
+        while stack:
+            current = stack[-1]
+
+            unvisited_neighbors = [
+                n for n in self.get_neighbors(current)
+                if n not in visited
+            ]
+
+            if unvisited_neighbors:
+                next_cell = random.choice(unvisited_neighbors)
+
+                self.remove_wall_between(current, next_cell)
+
+                yield current, next_cell
+
+                visited.add(next_cell)
+                stack.append(next_cell)
+            else:
+                stack.pop()
+
     def get_42_cells(self) -> list[tuple[int, int]]:
         """Return cells used to draw the 42 pattern."""
         start_row = (self.height - 5) // 2
