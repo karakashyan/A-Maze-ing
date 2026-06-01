@@ -1,5 +1,6 @@
 """Main entry point for the A-Maze-ing project."""
 
+import curses
 import sys
 from config_parser import load_config
 from maze_generator import MazeGenerator
@@ -64,7 +65,10 @@ def main() -> None:
         path_directions,
     )
 
-    run_interactive(generator, entry, exit_cell, path_cells)
+    try:
+        run_interactive(generator, entry, exit_cell, path_cells)
+    except curses.error as error:
+        print(f"Warning: interactive mode could not start: {error}")
 
 
 if __name__ == "__main__":

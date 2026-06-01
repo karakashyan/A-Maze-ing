@@ -2,25 +2,20 @@
 
 # A-Maze-ing
 
-## Description
-
-A-Maze-ing is a Python project that generates and displays mazes.
-
-The program reads a configuration file, generates a maze using a reproducible seed, saves the result in hexadecimal wall format, finds the shortest path from entry to exit, and displays the maze in an interactive terminal view.
+A-Maze-ing is a Python maze generator and terminal visualizer. It reads a configuration file, generates a valid maze, saves it in hexadecimal wall format, finds the shortest path, and displays the result in an interactive terminal view.
 
 ## Features
 
-- Python 3.10+
-- Configuration file parser
-- Seed-based maze generation
-- Perfect maze support
-- Non-perfect maze support with extra loops
-- Hexadecimal output file
-- Shortest path using BFS
-- Unicode terminal rendering
-- Interactive controls with `curses`
-- Visible `42` pattern made from fully closed cells
-- Animation bonus during maze generation
+- Config-based maze generation
+- Reproducible output with `SEED`
+- Perfect and non-perfect maze modes
+- DFS-based iterative backtracking generation
+- BFS shortest path search
+- Hexadecimal output format
+- Visible `42` pattern made from closed cells
+- Interactive terminal display with `curses`
+- Bonus animation for generation and animal movement
+- Reusable `MazeGenerator` package: `mazegen-ekarakas-arptadev`
 - `flake8` and `mypy` support
 
 ## Project structure
@@ -33,9 +28,18 @@ A-Maze-ing/
 ├── interactive.py
 ├── maze_generator.py
 ├── renderer.py
-├── maze.txt
 ├── Makefile
-└── README.md
+├── README.md
+├── pyproject.toml
+└── mazegen/
+    ├── __init__.py
+    └── maze_generator.py
+```
+
+Generated after running:
+
+```text
+maze.txt
 ```
 
 ## Usage
@@ -54,6 +58,8 @@ make run
 
 ## Configuration file
 
+The configuration file contains one `KEY=VALUE` pair per line. Lines starting with `#` are ignored.
+
 Example:
 
 ```text
@@ -66,35 +72,21 @@ PERFECT=True
 SEED=1
 ```
 
-### Keys
-
 | Key | Description |
 |---|---|
 | `WIDTH` | Maze width in cells |
 | `HEIGHT` | Maze height in cells |
 | `ENTRY` | Entry coordinates in `x,y` format |
 | `EXIT` | Exit coordinates in `x,y` format |
-| `OUTPUT_FILE` | Output file name |
+| `OUTPUT_FILE` | Name of the generated output file |
 | `PERFECT` | `True` for a perfect maze, `False` for extra loops |
 | `SEED` | Random seed for reproducible generation |
 
-Coordinates in the config file use:
-
-```text
-x,y
-```
-
-Inside the code, cells are stored as:
-
-```text
-(row, col)
-```
+The config uses `x,y` coordinates. Inside the code, cells are stored as `(row, col)`, so coordinates are converted when they are loaded.
 
 ## Output file format
 
-The maze is saved using one hexadecimal digit per cell.
-
-Wall bits:
+The maze is saved with one hexadecimal digit per cell. Each digit stores the closed walls of a cell.
 
 | Bit | Direction |
 |---|---|
@@ -103,7 +95,7 @@ Wall bits:
 | 2 | South |
 | 3 | West |
 
-After the maze grid, the file contains:
+After the maze rows, the file contains an empty line and then:
 
 ```text
 entry
@@ -122,78 +114,58 @@ A93C6A96A915396BA
 SSENESEESSSWNW
 ```
 
-The shortest path is written using:
-
-```text
-N E S W
-```
+The path uses only `N`, `E`, `S`, and `W`.
 
 ## Algorithm
 
-The main algorithm is iterative recursive backtracking.
+The maze is generated with **DFS-based iterative backtracking**.
 
-Steps:
+The generator starts from one cell, chooses a random unvisited neighbour, removes the wall between the two cells, moves forward, and backtracks with a stack when no unvisited neighbours remain.
 
-1. Start from one cell.
-2. Choose a random unvisited neighbour.
-3. Remove the wall between the current cell and the neighbour.
-4. Move to the neighbour.
-5. If there are no unvisited neighbours, backtrack.
-6. Continue until the maze is generated.
+This algorithm was chosen because it is simple, reliable, reproducible with a seed, and naturally creates a perfect maze when `PERFECT=True`.
 
-This algorithm was chosen because it is simple, reliable, easy to explain, and naturally creates perfect mazes.
+## Perfect and non-perfect mazes
 
-## Perfect and non-perfect mode
+When `PERFECT=True`, the maze has exactly one path between connected cells.
 
-When:
-
-```text
-PERFECT=True
-```
-
-The maze is perfect, meaning there is exactly one path between connected cells.
-
-When:
-
-```text
-PERFECT=False
-```
-
-The program first creates a perfect maze, then opens extra safe walls to add loops. The code avoids creating invalid `3x3` open areas.
-
-## 42 pattern
-
-The maze contains a visible `42` pattern.
-
-The pattern:
-
-- is placed near the centre;
-- is made from fully closed cells;
-- is treated as blocked cells;
-- is avoided by the generator and BFS;
-- cannot overlap with entry or exit.
-
-If the maze is too small for the pattern, the program prints an error and stops.
+When `PERFECT=False`, the program first creates a perfect maze and then opens extra safe walls to add loops. The code avoids invalid `3x3` open areas, so corridors do not become too wide.
 
 ## Shortest path
 
-The shortest path is found with Breadth-First Search.
+The shortest valid path from entry to exit is found with **Breadth-First Search**.
 
-BFS was chosen because it guarantees the shortest path in an unweighted grid.
+BFS was chosen because all moves have equal cost, so it guarantees the shortest path in an unweighted maze.
+
+## 42 pattern
+
+The visual maze contains a visible `42` pattern.
+
+The pattern:
+
+- is placed near the centre of the maze;
+- is made from fully closed cells;
+- is treated as blocked cells;
+- is avoided during generation and pathfinding;
+- cannot overlap with entry or exit.
+
+If the maze is too small for the pattern, the program prints a clear error message and stops gracefully.
 
 ## Visual representation
 
-The project uses terminal rendering with Unicode characters and `curses`.
+The project uses terminal rendering with Unicode characters and `curses`. The visual display shows walls, entry, exit, the shortest path, and the `42` pattern.
 
 Interactive keys:
 
 | Key | Action |
 |---|---|
 | `q` | Quit |
-| `p` | Show or hide the path |
+| `p` | Show or hide the shortest path |
 | `r` | Regenerate the maze |
-| `c` | Change wall colour |
+| `c` | Change wall colours |
 | `a` | Toggle animated generation |
+| `m` | Move the animal to the food bonus animation |
+
+If the terminal does not support `curses`, the maze is still generated and saved, and the program prints a warning instead of crashing.
 
 ## Makefile
 
@@ -208,31 +180,40 @@ make lint
 make lint-strict
 ```
 
-`make lint` runs `flake8` and `mypy` with the required flags.
-
-`make lint-strict` runs:
+`make lint` runs `flake8` and `mypy` with the required flags. `make lint-strict` runs:
 
 ```bash
 flake8 .
 mypy . --strict
 ```
 
-## Reusable MazeGenerator
+## Reusable package
 
-The reusable part of the project is the `MazeGenerator` class in `maze_generator.py`.
+The reusable part of the project is the `MazeGenerator` class. It is available in the root module and in the package directory:
 
-Example:
+```text
+maze_generator.py
+mazegen/maze_generator.py
+```
+
+Build the package:
+
+```bash
+python3 -m build
+```
+
+Install the generated wheel:
+
+```bash
+python3 -m pip install dist/mazegen_ekarakas_arptadev-0.1.0-py3-none-any.whl
+```
+
+Basic usage:
 
 ```python
-from maze_generator import MazeGenerator
+from mazegen import MazeGenerator
 
-generator = MazeGenerator(
-    width=20,
-    height=15,
-    seed=1,
-    perfect=True,
-)
-
+generator = MazeGenerator(width=20, height=15, seed=1, perfect=True)
 generator.generate()
 
 entry = (0, 0)
@@ -241,7 +222,6 @@ exit_cell = (5, 12)
 generator.add_42_pattern(entry, exit_cell)
 path = generator.find_shortest_path(entry, exit_cell)
 directions = generator.path_to_directions(path)
-
 generator.save_hex("maze.txt", entry, exit_cell, directions)
 ```
 
@@ -250,24 +230,66 @@ Important methods:
 | Method | Purpose |
 |---|---|
 | `generate()` | Generate the maze |
-| `generate_steps()` | Generate step by step for animation |
-| `add_42_pattern()` | Add the `42` pattern |
-| `find_shortest_path()` | Find shortest path |
-| `path_to_directions()` | Convert path to `N/E/S/W` |
-| `save_hex()` | Save maze to output file |
+| `generate_steps()` | Generate the maze step by step for animation |
+| `add_42_pattern()` | Add the closed-cell `42` pattern |
+| `find_shortest_path()` | Find the shortest path with BFS |
+| `path_to_directions()` | Convert path cells to `N/E/S/W` directions |
+| `save_hex()` | Save the maze in subject output format |
 
 ## Error handling
 
-The program handles:
+The program handles invalid input gracefully, including:
 
 - missing config file;
-- invalid config syntax;
-- invalid boolean values;
-- invalid entry or exit;
+- bad config syntax;
+- missing required keys;
+- invalid numeric or boolean values;
+- entry or exit outside the maze;
 - entry equal to exit;
 - maze too small for the `42` pattern;
 - entry or exit overlapping the `42` pattern;
-- no valid path from entry to exit.
+- no valid path from entry to exit;
+- unsupported terminal for interactive mode.
+
+## Team and project management
+
+### Team members and roles
+
+- **ekarakas**: mainly worked on maze generation logic, DFS-based iterative backtracking, configuration handling, output file format, testing, and project integration.
+- **arptadev**: mainly worked on shortest path search with BFS, visual representation, interactive mode, README, reusable package preparation, and final checks.
+
+Although some parts had a main responsible person, the project was developed collaboratively. The overall architecture, maze logic, visual behaviour, debugging, testing, and final improvements were discussed and implemented together step by step.
+
+### Planning
+
+The project started with reading the subject and understanding the required input format, output format, maze validity rules, and visual requirements. Then the work was split into small modules: config parser, maze generator, pathfinding, renderer, interactive mode, README, and reusable package.
+
+During development, the plan evolved as edge cases appeared, especially around the `42` pattern, non-perfect mazes, `3x3` open areas, and terminal animation. The final version was improved through repeated testing with `flake8`, `mypy`, manual runs, and peer-style review.
+
+### What worked well
+
+- Splitting the project into clear modules.
+- Using DFS for generation and BFS for shortest path.
+- Keeping output file logic separate from visual bonus features.
+- Checking the project with strict linting and type checking.
+
+### What could be improved
+
+- Add more automated unit tests.
+- Support more maze generation algorithms.
+- Improve terminal compatibility for more environments.
+
+### Tools used
+
+- Python 3
+- `random`
+- `collections.deque`
+- `curses`
+- `flake8`
+- `mypy`
+- `setuptools` / `build`
+- Git
+- AI assistant for explanations, review, README help, and edge-case checking
 
 ## Resources and AI usage
 
@@ -277,9 +299,9 @@ Resources used:
 - `random` module documentation
 - `collections.deque` documentation
 - `curses` documentation
-- flake8 documentation
-- mypy documentation
-- Articles about recursive backtracking
-- Articles about BFS shortest path
+- `flake8` documentation
+- `mypy` documentation
+- Articles and explanations about recursive backtracking
+- Articles and explanations about BFS shortest path search
 
-AI was used as a learning and review assistant. It helped with planning, explanations, code review, edge cases, README preparation, and checking the project against the subject. All code was reviewed and tested by the team.
+AI was used as a learning and review assistant. It helped with planning, explanations, code review, edge-case checking, README preparation, and checking the project against the subject. All generated or suggested content was reviewed, understood, and tested by the team before being used.

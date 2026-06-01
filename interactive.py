@@ -25,6 +25,8 @@ _WALL_COLORS = [
 _PATH_DOTS = ["·", "•", "◆"]
 ENTRY_LABEL = " E "
 EXIT_LABEL = " X "
+ANIMAL_LABEL = "🐱 "
+FOOD_LABEL = "🐟 "
 
 
 def _path_pair(idx: int, length: int) -> int:
@@ -53,13 +55,14 @@ def run_interactive(
         curses.start_color()
         curses.use_default_colors()
         curses.curs_set(0)
+        stdscr.timeout(60)
 
         curses.init_pair(_ENTRY,  curses.COLOR_GREEN,  -1)
         curses.init_pair(_EXIT,   curses.COLOR_RED,    -1)
         curses.init_pair(_PATH_A, curses.COLOR_GREEN,  -1)
         curses.init_pair(_PATH_B, curses.COLOR_YELLOW, -1)
         curses.init_pair(_PATH_C, curses.COLOR_RED,    -1)
-        curses.init_pair(_42,     curses.COLOR_BLACK,  curses.COLOR_MAGENTA)
+        curses.init_pair(_42,     curses.COLOR_WHITE,  curses.COLOR_BLUE)
         curses.init_pair(_BAR,    curses.COLOR_BLACK,  curses.COLOR_WHITE)
 
         cur_gen = generator
@@ -69,10 +72,17 @@ def run_interactive(
         show_path = True
         wall_i = 0
         animate = False
+        animal_pos = entry
+        food_visible = True
+        move_animation = False
+        move_index = 0
+        move_delay = 0
 
         def regenerate() -> None:
             """Regenerate the maze, optionally with animation."""
             nonlocal cur_gen, cur_path
+            nonlocal animal_pos, food_visible
+            nonlocal move_animation, move_index, move_delay
 
             cur_gen = MazeGenerator(
                 cur_gen.width,
@@ -83,7 +93,7 @@ def run_interactive(
 
             if animate:
                 for _ in cur_gen.generate_steps():
-                    stdscr.clear()
+                    stdscr.erase()
 
                     lines = render_maze_lines(cur_gen, entry, exit_cell, [])
 
@@ -91,12 +101,18 @@ def run_interactive(
                         stdscr.addstr(row_i, 0, line)
 
                     stdscr.refresh()
-                    curses.napms(15)
+                    curses.napms(20)
             else:
                 cur_gen.generate()
 
             cur_gen.add_42_pattern(entry, exit_cell)
             cur_path = cur_gen.find_shortest_path(entry, exit_cell)
+
+            animal_pos = entry
+            food_visible = True
+            move_animation = False
+            move_index = 0
+            move_delay = 0
 
         def _init_wall_pair() -> None:
             """Initialize the current wall colour pair."""
@@ -105,7 +121,7 @@ def run_interactive(
         _init_wall_pair()
 
         while True:
-            stdscr.clear()
+            stdscr.erase()
             _init_wall_pair()
 
             vis_path = cur_path if show_path else []
@@ -125,7 +141,17 @@ def run_interactive(
                     for c in range(cur_gen.width):
                         screen_col = c * 4 + 1
                         cell = (r, c)
-                        if cell == entry:
+                        if cell == animal_pos:
+                            stdscr.addstr(
+                                screen_row, screen_col, ANIMAL_LABEL,
+                                curses.A_BOLD,
+                            )
+                        elif cell == exit_cell and food_visible:
+                            stdscr.addstr(
+                                screen_row, screen_col, FOOD_LABEL,
+                                curses.A_BOLD,
+                            )
+                        elif cell == entry:
                             stdscr.addstr(
                                 screen_row, screen_col, ENTRY_LABEL,
                                 curses.color_pair(_ENTRY)
@@ -147,7 +173,7 @@ def run_interactive(
                 for row, col in cur_gen.get_42_cells():
                     if (row, col) in (entry, exit_cell):
                         continue
-                    stdscr.addstr(row * 2 + 1, col * 4 + 1, "   ",
+                    stdscr.addstr(row * 2 + 1, col * 4 + 1, " ✦ ",
                                   curses.color_pair(_42))
 
                 stdscr.addstr(0, 0, lines[0], outer_attr)
@@ -170,11 +196,30 @@ def run_interactive(
                 stdscr.addstr(menu_y + 5, 0, "c - Rotate maze colors")
                 stdscr.addstr(menu_y + 6, 0, "a - Animated regenerate "
                               f"({'ON' if animate else 'OFF'})")
-                stdscr.addstr(menu_y + 7, 0, "q - Quit")
+                stdscr.addstr(menu_y + 7, 0, "m - Move animal to food")
+                stdscr.addstr(menu_y + 8, 0, "q - Quit")
             except curses.error:
                 pass
 
             stdscr.refresh()
+
+            if move_animation and cur_path:
+                move_delay += 1
+
+                if move_delay >= 2:
+                    move_delay = 0
+
+                    if move_index < len(cur_path):
+                        animal_pos = cur_path[move_index]
+                        move_index += 1
+
+                        if animal_pos == exit_cell:
+                            food_visible = False
+                            move_animation = False
+                    else:
+                        food_visible = False
+                        move_animation = False
+
             key = stdscr.getch()
 
             if key == ord("q"):
@@ -188,6 +233,13 @@ def run_interactive(
             elif key == ord("r"):
                 cur_seed += 1
                 regenerate()
+            elif key == ord("m"):
+                if cur_path:
+                    animal_pos = entry
+                    food_visible = True
+                    move_animation = True
+                    move_index = 0
+                    move_delay = 0
             elif key == ord("c"):
                 wall_i = (wall_i + 1) % len(_WALL_COLORS)
 
