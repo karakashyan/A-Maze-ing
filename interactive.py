@@ -1,7 +1,7 @@
 """Interactive terminal display for the A-Maze-ing project."""
 
 import curses
-from maze_generator import MazeGenerator
+from mazegen import MazeGenerator
 from renderer import render_maze_lines
 
 _WALL = 1

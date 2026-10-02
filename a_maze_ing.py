@@ -3,7 +3,7 @@
 import curses
 import sys
 from config_parser import load_config
-from maze_generator import MazeGenerator
+from mazegen import MazeGenerator
 from interactive import run_interactive
 
 

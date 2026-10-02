@@ -1,6 +1,6 @@
 """Unicode renderer for the A-Maze-ing project."""
 
-from maze_generator import MazeGenerator
+from mazegen import MazeGenerator
 
 _INNER_JOINTS = {
     (False, False, False, False): " ",

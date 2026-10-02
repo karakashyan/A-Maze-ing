@@ -104,7 +104,7 @@ class MazeGenerator:
                 stack.pop()
 
         if not self.perfect:
-            self.add_loops(self.width * self.height // 25)
+            self.remove_dead_ends()
 
     def generate_steps(
             self) -> Iterator[tuple[tuple[int, int], tuple[int, int]]]:
@@ -136,7 +136,7 @@ class MazeGenerator:
                 stack.pop()
 
         if not self.perfect:
-            self.add_loops(self.width * self.height // 25)
+            self.remove_dead_ends()
 
     def get_42_cells(self) -> list[tuple[int, int]]:
         """Return cells used to draw the 42 pattern."""
@@ -233,42 +233,6 @@ class MazeGenerator:
         self.grid[row2][col2] = old_cell2
 
         return False
-
-    def add_loops(self, count: int) -> None:
-        """Open extra walls to make the maze non-perfect."""
-        possible_walls: list[tuple[tuple[int, int], tuple[int, int]]] = []
-
-        for row in range(self.height):
-            for col in range(self.width):
-                cell = (row, col)
-                if cell in self._42_cells:
-                    continue
-
-                if col < self.width - 1:
-                    neighbor = (row, col + 1)
-
-                    if neighbor not in self._42_cells and \
-                            self.grid[row][col]["E"]:
-                        possible_walls.append((cell, neighbor))
-
-                if row < self.height - 1:
-                    neighbor = (row + 1, col)
-
-                    if neighbor not in self._42_cells and \
-                            self.grid[row][col]["S"]:
-                        possible_walls.append((cell, neighbor))
-        random.shuffle(possible_walls)
-
-        opened = 0
-        for cell, neighbor in possible_walls:
-            if opened == count:
-                break
-
-            if self.would_create_3x3_open_area(cell, neighbor):
-                continue
-
-            self.remove_wall_between(cell, neighbor)
-            opened += 1
 
     def cell_to_hex(self, cell: dict[str, bool]) -> str:
         """Convert one maze cell to a hexadecimal wall value."""
@@ -394,7 +358,40 @@ class MazeGenerator:
 
         return result
 
-    def print_debug(self) -> None:
-        """Print the maze grid for debugging."""
-        for row in self.grid:
-            print(row)
+    def is_dead_end(self, cell: tuple[int, int]) -> bool:
+        """Return True if the cell has exactly one open wall."""
+        row, col = cell
+        return list(self.grid[row][col].values()).count(False) == 1
+
+    def get_dead_ends(self) -> list[tuple[int, int]]:
+        """Return all dead-end cells of the maze."""
+        dead_ends: list[tuple[int, int]] = []
+        for row in range(self.height):
+            for col in range(self.width):
+                if self.is_dead_end((row, col)):
+                    dead_ends.append((row, col))
+        return dead_ends
+
+    def get_closed_neighbors(
+        self,
+        cell: tuple[int, int],
+    ) -> list[tuple[int, int]]:
+        """Return valid neighbours separated from the cell by a wall."""
+        opened = self.get_open_neighbors(cell)
+        closed: list[tuple[int, int]] = []
+        for c in self.get_neighbors(cell):
+            if c not in opened:
+                closed.append(c)
+        return closed
+
+    def remove_dead_ends(self) -> None:
+        """Open extra walls so that the maze has no dead ends."""
+        ends = self.get_dead_ends()
+        for cell in ends:
+            if not self.is_dead_end(cell):
+                continue
+            closed = self.get_closed_neighbors(cell)
+            if not closed:
+                continue
+            neighbor = random.choice(closed)
+            self.remove_wall_between(cell, neighbor)
