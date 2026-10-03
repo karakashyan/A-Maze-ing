@@ -27,10 +27,6 @@ def main() -> None:
         print(f"Error: missing required key: {error}")
         return
 
-    if config["width"] < 7 or config["height"] < 5:
-        print("Error: maze is too small for the 42 pattern")
-        return
-
     generator = MazeGenerator(
         width=config["width"],
         height=config["height"],
@@ -52,18 +48,31 @@ def main() -> None:
 
     generator.add_42_pattern(entry, exit_cell)
 
+    if not generator.perfect and generator.count_loops() < 2:
+        print("Error: maze is too small for PERFECT=False "
+              "(needs at least 2 loops)")
+        return
+
+    if not generator.can_draw_42():
+        print("Error: maze is too small for the 42 pattern "
+              "(min 9x7), pattern omitted")
+
     path_cells = generator.find_shortest_path(entry, exit_cell)
     if not path_cells:
         print("Error: no valid path from entry to exit")
         return
     path_directions = generator.path_to_directions(path_cells)
 
-    generator.save_hex(
-        config["output_file"],
-        entry,
-        exit_cell,
-        path_directions,
-    )
+    try:
+        generator.save_hex(
+            config["output_file"],
+            entry,
+            exit_cell,
+            path_directions,
+        )
+    except OSError as error:
+        print(f"Error: cannot write output file: {error}")
+        return
 
     try:
         run_interactive(generator, entry, exit_cell, path_cells)

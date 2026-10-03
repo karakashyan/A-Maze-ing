@@ -1,6 +1,8 @@
 PYTHON = python3
 CONFIG = config.txt
 
+.PHONY: install run debug clean lint lint-strict
+
 install:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install flake8 mypy

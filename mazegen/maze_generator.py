@@ -138,8 +138,15 @@ class MazeGenerator:
         if not self.perfect:
             self.remove_dead_ends()
 
+    def can_draw_42(self) -> bool:
+        """Return True if the maze is large enough for the 42 pattern."""
+        return self.width >= 9 and self.height >= 7
+
     def get_42_cells(self) -> list[tuple[int, int]]:
         """Return cells used to draw the 42 pattern."""
+        real_cells: list[tuple[int, int]] = []
+        if not self.can_draw_42():
+            return real_cells
         start_row = (self.height - 5) // 2
         start_col = (self.width - 7) // 2
         cells = [
@@ -149,7 +156,6 @@ class MazeGenerator:
             (3, 2), (3, 4),
             (4, 2), (4, 4), (4, 5), (4, 6),
         ]
-        real_cells = []
         for row, col in cells:
             real_cells.append((start_row + row, start_col + col))
         return real_cells
@@ -164,8 +170,7 @@ class MazeGenerator:
         exit_cell: tuple[int, int],
     ) -> None:
         """Add a visible 42 pattern using fully closed cells."""
-        if self.width < 7 or self.height < 5:
-            print("Warning: maze is too small for the 42 pattern!")
+        if not self.can_draw_42():
             return
         cells = self.get_42_cells()
         for c in cells:
@@ -391,7 +396,23 @@ class MazeGenerator:
             if not self.is_dead_end(cell):
                 continue
             closed = self.get_closed_neighbors(cell)
-            if not closed:
+            safe: list[tuple[int, int]] = []
+            for n in closed:
+                if not self.would_create_3x3_open_area(cell, n):
+                    safe.append(n)
+            if not safe:
                 continue
-            neighbor = random.choice(closed)
+            neighbor = random.choice(safe)
             self.remove_wall_between(cell, neighbor)
+
+    def count_loops(self) -> int:
+        """Return the number of independent loops in the maze."""
+        cells = self.width * self.height - len(self._42_cells)
+        passages = 0
+        for row in range(self.height):
+            for col in range(self.width):
+                if not self.grid[row][col]["E"]:
+                    passages += 1
+                if not self.grid[row][col]["S"]:
+                    passages += 1
+        return passages - cells + 1

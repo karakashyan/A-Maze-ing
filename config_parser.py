@@ -67,7 +67,7 @@ def load_config(filename: str) -> dict[str, Any]:
                 raise ValueError(f"Invalid config line: {line}")
 
             key, value = line.split("=", 1)
-            raw_config[key] = value
+            raw_config[key.strip()] = value.strip()
 
     config: dict[str, Any] = {
         "width": int(raw_config["WIDTH"]),

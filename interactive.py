@@ -97,8 +97,11 @@ def run_interactive(
 
                     lines = render_maze_lines(cur_gen, entry, exit_cell, [])
 
-                    for row_i, line in enumerate(lines):
-                        stdscr.addstr(row_i, 0, line)
+                    try:
+                        for row_i, line in enumerate(lines):
+                            stdscr.addstr(row_i, 0, line)
+                    except curses.error:
+                        pass
 
                     stdscr.refresh()
                     curses.napms(20)

@@ -1,7 +1,19 @@
+# Python cache
 __pycache__/
 *.py[cod]
+
+# Linters cache
 .mypy_cache/
 .pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+
+# Package build
 build/
+dist/
 *.egg-info/
+
+# Generated output and local test configs
 maze.txt
