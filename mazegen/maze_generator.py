@@ -79,7 +79,8 @@ class MazeGenerator:
         return neighbors
 
     def generate(self) -> None:
-        """Generate a perfect maze using an iterative backtracking."""
+        """Generate the maze; remove dead ends if it is not perfect."""
+
         random.seed(self.seed)
 
         start = (0, 0)

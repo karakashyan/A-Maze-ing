@@ -20,6 +20,9 @@ def main() -> None:
     except FileNotFoundError:
         print(f"Error: file not found: {config_file}")
         return
+    except OSError as error:
+        print(f"Error: cannot read config file: {error}")
+        return
     except ValueError as error:
         print(f"Error: {error}")
         return
@@ -78,6 +81,8 @@ def main() -> None:
         run_interactive(generator, entry, exit_cell, path_cells)
     except curses.error as error:
         print(f"Warning: interactive mode could not start: {error}")
+    except KeyboardInterrupt:
+        print("\nInterrupted by user.")
 
 
 if __name__ == "__main__":
