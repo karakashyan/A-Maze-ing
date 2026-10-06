@@ -17,3 +17,4 @@ dist/
 
 # Generated output and local test configs
 maze.txt
+test_*.txt

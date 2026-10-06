@@ -32,10 +32,12 @@ The generation logic lives in a standalone, pip-installable package called
 ### Installation
 
 It is recommended to use a virtual environment, created outside of the project
-folder:
+folder. On machines without the `python3-venv` package, use `virtualenv`
+(it needs no administrator rights):
 
 ```bash
-python3 -m venv ~/venvs/amazeing
+python3 -m pip install --user virtualenv
+python3 -m virtualenv ~/venvs/amazeing
 source ~/venvs/amazeing/bin/activate
 make install
 ```
@@ -56,10 +58,10 @@ make run
 
 | Rule               | Description                                         |
 |--------------------|-----------------------------------------------------|
-| `make install`     | Install the project dependencies                    |
+| `make install`     | Install `flake8`, `mypy`, `build`, `virtualenv`     |
 | `make run`         | Run the program with `config.txt`                   |
 | `make debug`       | Run the program inside the `pdb` debugger           |
-| `make clean`       | Remove caches (`__pycache__`, `.mypy_cache`, ...)   |
+| `make clean`       | Remove caches and build folders (`build`, `dist`)   |
 | `make lint`        | Run `flake8` and `mypy` with the mandatory flags    |
 | `make lint-strict` | Run `flake8` and `mypy --strict`                    |
 
@@ -83,8 +85,8 @@ with `#` and empty lines are ignored. Spaces around `=` are allowed.
 
 | Key           | Required | Description                         | Example             |
 |---------------|----------|-------------------------------------|---------------------|
-| `WIDTH`       | yes      | Maze width (number of cells)        | `WIDTH=18`          |
-| `HEIGHT`      | yes      | Maze height (number of cells)       | `HEIGHT=15`         |
+| `WIDTH`       | yes      | Maze width, from 1 to 500 cells     | `WIDTH=18`          |
+| `HEIGHT`      | yes      | Maze height, from 1 to 500 cells    | `HEIGHT=15`         |
 | `ENTRY`       | yes      | Entry coordinates `x,y`             | `ENTRY=2,0`         |
 | `EXIT`        | yes      | Exit coordinates `x,y`              | `EXIT=15,7`         |
 | `OUTPUT_FILE` | yes      | Output file name                    | `OUTPUT_FILE=maze.txt` |
@@ -113,7 +115,10 @@ when:
 - the configuration file does not exist or cannot be read;
 - a line has no `=`, a key is missing, or a value is invalid
   (non-numeric size, wrong coordinates, `PERFECT` not `True`/`False`);
-- the size is not positive, entry and exit are equal or outside the maze;
+  the message names the wrong key, e.g. `WIDTH must be an integer, got 'abc'`;
+- `WIDTH` or `HEIGHT` is not between 1 and 500 (larger mazes would not fit
+  in memory);
+- entry and exit are equal or outside the maze;
 - entry or exit is placed on a "42" cell;
 - `PERFECT=False` is impossible for the requested size (a Pac-Man board needs
   at least 2 independent loops, e.g. a 2x2 maze cannot have them);
@@ -189,7 +194,9 @@ The shortest path from entry to exit is found with a **breadth-first search
 
 The whole generation logic is the `MazeGenerator` class inside the `mazegen`
 package. It does not depend on the rest of the project (no display, no config
-file) and can be installed with pip.
+file) and can be installed with pip. The package has its own documentation,
+`mazegen/README.md`, which is included in the `.whl` file; the summary below
+is the same.
 
 ### Installation
 
@@ -243,13 +250,20 @@ uses `(x, y)`, so `x = col` and `y = row`.
 
 ### Building the package
 
+From the root of the repository, in a clean virtual environment:
+
 ```bash
+python3 -m virtualenv ~/venvs/build
+source ~/venvs/build/bin/activate
 pip install build
 python3 -m build
+ls dist
 ```
 
-The `.whl` and `.tar.gz` files are created in `dist/`. A built
-`mazegen-*.whl` is also stored at the root of the repository.
+`python3 -m build` reads `pyproject.toml` and creates
+`dist/mazegen-0.1.0-py3-none-any.whl` and `dist/mazegen-0.1.0.tar.gz`.
+A built `mazegen-0.1.0-py3-none-any.whl` is also stored at the root of the
+repository.
 
 ## Advanced features (bonuses)
 
@@ -331,18 +345,18 @@ the non-perfect mode was redesigned into a fully braided Pac-Man board.
 
 ### How AI was used
 
-We used AI (Claude) as a learning and reviewing assistant, not as a code
-generator to copy from:
+We used AI (Claude) as a teacher and reviewer during the whole project:
 
-- **Learning new topics**: explanations of DFS backtracking, BFS, braiding,
-  the loop-counting formula, `curses`, Python packaging and software licenses.
-- **Code review**: checking our code against the subject, finding bugs and
-  edge cases (small mazes, impossible parameters, file errors), and
-  `flake8`/`mypy` issues.
-- **Literature**: finding the references listed above to answer our questions.
-
-Every piece of code was written, tested and understood by both of us before
-being kept in the project.
+- **Learning**: explanations of DFS backtracking, BFS, braiding, the
+  loop-counting formula (`passages - cells + 1`), `curses`, Python
+  packaging, virtual environments and software licenses.
+- **Code review**: checking the code against the subject, finding bugs and
+  edge cases (small mazes, impossible parameters, huge sizes, file errors)
+- **Code written with AI help**: the braiding methods (`is_dead_end`,
+  `get_dead_ends`, `get_closed_neighbors`, `remove_dead_ends`) and
+  `count_loops` were written by us step by step with AI guidance.
+- **Documentation**: AI drafted this README, `mazegen/README.md` and the
+  docstrings; we reviewed and corrected them.
 
 ## License
 

@@ -1,4 +1,8 @@
-"""Maze generation logic for the A-Maze-ing project."""
+"""Maze generation logic for the A-Maze-ing project.
+
+This module provides the reusable ``MazeGenerator`` class. All coordinates
+used by the module are ``(row, col)`` tuples.
+"""
 
 import random
 from collections import deque
@@ -6,10 +10,32 @@ from collections.abc import Iterator
 
 
 class MazeGenerator:
-    """Generate and store a maze structure."""
+    """Generate and store a maze structure.
+
+    Each cell of ``grid`` is a dictionary of four walls (``"N"``, ``"E"``,
+    ``"S"``, ``"W"``). ``True`` means the wall is closed, ``False`` means it
+    is open. Neighbouring cells always agree on their shared wall.
+
+    Attributes:
+        width: Number of columns.
+        height: Number of rows.
+        seed: Random seed, the same seed always gives the same maze.
+        perfect: ``True`` for a perfect maze (a single path, no loops),
+            ``False`` for a Pac-Man board (loops and no real dead-ends).
+        grid: The maze, accessed as ``grid[row][col]``.
+    """
+
     def __init__(self, width: int, height: int,
                  seed: int, perfect: bool) -> None:
-        """Initialize the maze generator."""
+        """Initialize the generator with every wall closed.
+
+        Args:
+            width: Number of columns.
+            height: Number of rows.
+            seed: Random seed used by ``generate``.
+            perfect: ``True`` for a perfect maze, ``False`` for a
+                Pac-Man board.
+        """
         self.width = width
         self.height = height
         self.seed = seed
@@ -18,7 +44,11 @@ class MazeGenerator:
         self.perfect = perfect
 
     def _create_grid(self) -> list[list[dict[str, bool]]]:
-        """Create a grid where every cell starts with all walls closed."""
+        """Create a grid where every cell starts with all walls closed.
+
+        Returns:
+            A ``height`` x ``width`` list of wall dictionaries.
+        """
         grid = []
         for _ in range(self.height):
             row = []
@@ -35,7 +65,14 @@ class MazeGenerator:
 
     def remove_wall_between(self, c1: tuple[int, int],
                             c2: tuple[int, int]) -> None:
-        """Remove the wall between two neighbouring cells."""
+        """Remove the wall between two neighbouring cells.
+
+        Both cells are updated, so the shared wall stays coherent.
+
+        Args:
+            c1: First cell as ``(row, col)``.
+            c2: Second cell as ``(row, col)``, next to ``c1``.
+        """
         row1, col1 = c1
         row2, col2 = c2
 
@@ -56,7 +93,16 @@ class MazeGenerator:
             cell2["S"] = False
 
     def get_neighbors(self, cell: tuple[int, int]) -> list[tuple[int, int]]:
-        """Return all valid neighbours inside the maze bounds."""
+        """Return the neighbours of a cell, ignoring walls.
+
+        Cells outside the maze and cells of the "42" pattern are skipped.
+
+        Args:
+            cell: The cell as ``(row, col)``.
+
+        Returns:
+            The list of neighbouring cells.
+        """
         row, col = cell
         neighbors = []
 
@@ -79,8 +125,12 @@ class MazeGenerator:
         return neighbors
 
     def generate(self) -> None:
-        """Generate the maze; remove dead ends if it is not perfect."""
+        """Generate the maze; remove dead ends if it is not perfect.
 
+        Uses an iterative randomized depth-first search (recursive
+        backtracker). If ``perfect`` is ``False``, ``remove_dead_ends`` is
+        then applied to turn the maze into a braided Pac-Man board.
+        """
         random.seed(self.seed)
 
         start = (0, 0)
@@ -109,7 +159,14 @@ class MazeGenerator:
 
     def generate_steps(
             self) -> Iterator[tuple[tuple[int, int], tuple[int, int]]]:
-        """Generate maze step-by-step for animation (curses-friendly)."""
+        """Generate the maze step by step, for animation.
+
+        Works like ``generate`` but pauses each time a wall is removed.
+
+        Yields:
+            ``(current, next_cell)``: the two cells whose shared wall
+            has just been removed.
+        """
         random.seed(self.seed)
 
         start = (0, 0)
@@ -140,11 +197,22 @@ class MazeGenerator:
             self.remove_dead_ends()
 
     def can_draw_42(self) -> bool:
-        """Return True if the maze is large enough for the 42 pattern."""
+        """Check whether the maze is large enough for the "42" pattern.
+
+        Returns:
+            ``True`` if the maze is at least 9 x 7 cells.
+        """
         return self.width >= 9 and self.height >= 7
 
     def get_42_cells(self) -> list[tuple[int, int]]:
-        """Return cells used to draw the 42 pattern."""
+        """Return the cells used to draw the "42" pattern.
+
+        The pattern is 7 x 5 cells and is centred in the maze.
+
+        Returns:
+            The list of "42" cells, or an empty list if the maze is too
+            small (see ``can_draw_42``).
+        """
         real_cells: list[tuple[int, int]] = []
         if not self.can_draw_42():
             return real_cells
@@ -161,16 +229,32 @@ class MazeGenerator:
             real_cells.append((start_row + row, start_col + col))
         return real_cells
 
-    def validate_e_x(self, e: tuple[int, int], x: tuple[int, int]) -> bool:
-        """Return True if entry and exit do not overlap with the 42 pattern."""
-        return e not in self._42_cells and x not in self._42_cells
+    def validate_e_x(self, entry: tuple[int, int],
+                     exit_cell: tuple[int, int]) -> bool:
+        """Check that the entry and the exit are not "42" cells.
+
+        Args:
+            entry: Entry cell as ``(row, col)``.
+            exit_cell: Exit cell as ``(row, col)``.
+
+        Returns:
+            ``True`` if neither cell overlaps the "42" pattern.
+        """
+        return entry not in self._42_cells and exit_cell not in self._42_cells
 
     def add_42_pattern(
         self,
         entry: tuple[int, int],
         exit_cell: tuple[int, int],
     ) -> None:
-        """Add a visible 42 pattern using fully closed cells."""
+        """Draw the visible "42" pattern with fully closed cells.
+
+        Does nothing if the maze is too small (see ``can_draw_42``).
+
+        Args:
+            entry: Entry cell as ``(row, col)``, never closed.
+            exit_cell: Exit cell as ``(row, col)``, never closed.
+        """
         if not self.can_draw_42():
             return
         cells = self.get_42_cells()
@@ -180,7 +264,11 @@ class MazeGenerator:
             self.close_cell(c)
 
     def close_cell(self, cell: tuple[int, int]) -> None:
-        """Close all walls around one cell and update neighbouring walls."""
+        """Close all walls of a cell and update its neighbours.
+
+        Args:
+            cell: The cell to close, as ``(row, col)``.
+        """
         row, col = cell
 
         self.grid[row][col]["N"] = True
@@ -202,7 +290,18 @@ class MazeGenerator:
         c1: tuple[int, int],
         c2: tuple[int, int],
     ) -> bool:
-        """Return True if opening this wall creates a 3x3 open area."""
+        """Check whether opening a wall would create a 3 x 3 open area.
+
+        The wall is opened temporarily, every 3 x 3 square around it is
+        checked, then the wall is restored. The maze is not changed.
+
+        Args:
+            c1: First cell as ``(row, col)``.
+            c2: Second cell as ``(row, col)``, next to ``c1``.
+
+        Returns:
+            ``True`` if opening the wall would create a 3 x 3 open area.
+        """
         row1, col1 = c1
         row2, col2 = c2
 
@@ -241,7 +340,17 @@ class MazeGenerator:
         return False
 
     def cell_to_hex(self, cell: dict[str, bool]) -> str:
-        """Convert one maze cell to a hexadecimal wall value."""
+        """Convert one cell to its hexadecimal wall value.
+
+        Bit 0 = North, 1 = East, 2 = South, 3 = West; a set bit means
+        the wall is closed.
+
+        Args:
+            cell: The wall dictionary of the cell.
+
+        Returns:
+            One uppercase hexadecimal digit, from ``"0"`` to ``"F"``.
+        """
         value = 0
 
         if cell["N"]:
@@ -256,11 +365,22 @@ class MazeGenerator:
         return format(value, "X")
 
     def row_to_hex(self, row: list[dict[str, bool]]) -> str:
-        """Convert one maze row to a hexadecimal string."""
+        """Convert one maze row to a hexadecimal string.
+
+        Args:
+            row: The list of wall dictionaries of the row.
+
+        Returns:
+            One hexadecimal digit per cell.
+        """
         return "".join(self.cell_to_hex(cell) for cell in row)
 
     def maze_to_hex_lines(self) -> list[str]:
-        """Convert the whole maze grid to hexadecimal lines."""
+        """Convert the whole maze to hexadecimal lines.
+
+        Returns:
+            One string per row, one hexadecimal digit per cell.
+        """
         result = []
         for row in self.grid:
             result.append(self.row_to_hex(row))
@@ -273,7 +393,20 @@ class MazeGenerator:
         exit_cell: tuple[int, int],
         path_directions: str,
     ) -> None:
-        """Save the maze grid to a file in hexadecimal format."""
+        """Save the maze to a file in the hexadecimal format.
+
+        The file contains the grid, an empty line, the entry and exit as
+        ``x,y`` and the path as ``N``/``E``/``S``/``W`` letters.
+
+        Args:
+            filename: Path of the output file.
+            entry: Entry cell as ``(row, col)``.
+            exit_cell: Exit cell as ``(row, col)``.
+            path_directions: The path, for example ``"SSEEN"``.
+
+        Raises:
+            OSError: If the file cannot be written.
+        """
         with open(filename, "w", encoding="utf-8") as file:
             for line in self.maze_to_hex_lines():
                 file.write(line + "\n")
@@ -286,7 +419,14 @@ class MazeGenerator:
         self,
         cell: tuple[int, int]
     ) -> list[tuple[int, int]]:
-        """Return reachable neighbours through open walls."""
+        """Return the neighbours reachable through an open wall.
+
+        Args:
+            cell: The cell as ``(row, col)``.
+
+        Returns:
+            The list of neighbouring cells with no wall in between.
+        """
         row, col = cell
         cell_walls = self.grid[row][col]
         neighbors = []
@@ -318,7 +458,16 @@ class MazeGenerator:
         start: tuple[int, int],
         end: tuple[int, int],
     ) -> list[tuple[int, int]]:
-        """Find the shortest path between two cells."""
+        """Find the shortest path between two cells using BFS.
+
+        Args:
+            start: Start cell as ``(row, col)``.
+            end: End cell as ``(row, col)``.
+
+        Returns:
+            The cells of the path from ``start`` to ``end`` (both
+            included), or an empty list if ``end`` cannot be reached.
+        """
         queue = deque([start])
         visited: set[tuple[int, int]] = {start}
         parent: dict[tuple[int, int], tuple[int, int]] = {}
@@ -346,7 +495,15 @@ class MazeGenerator:
         return path
 
     def path_to_directions(self, path: list[tuple[int, int]]) -> str:
-        """Convert a cell path to N/E/S/W directions."""
+        """Convert a path of cells to direction letters.
+
+        Args:
+            path: The cells of the path, as returned by
+                ``find_shortest_path``.
+
+        Returns:
+            A string of ``N``, ``E``, ``S``, ``W`` letters.
+        """
         result = ""
 
         for i in range(len(path) - 1):
@@ -365,12 +522,23 @@ class MazeGenerator:
         return result
 
     def is_dead_end(self, cell: tuple[int, int]) -> bool:
-        """Return True if the cell has exactly one open wall."""
+        """Check whether a cell is a dead end.
+
+        Args:
+            cell: The cell as ``(row, col)``.
+
+        Returns:
+            ``True`` if the cell has exactly one open wall.
+        """
         row, col = cell
         return list(self.grid[row][col].values()).count(False) == 1
 
     def get_dead_ends(self) -> list[tuple[int, int]]:
-        """Return all dead-end cells of the maze."""
+        """Return all dead-end cells of the maze.
+
+        Returns:
+            The list of dead-end cells as ``(row, col)``.
+        """
         dead_ends: list[tuple[int, int]] = []
         for row in range(self.height):
             for col in range(self.width):
@@ -382,7 +550,16 @@ class MazeGenerator:
         self,
         cell: tuple[int, int],
     ) -> list[tuple[int, int]]:
-        """Return valid neighbours separated from the cell by a wall."""
+        """Return the neighbours separated from the cell by a wall.
+
+        The outer border and the "42" cells are never included.
+
+        Args:
+            cell: The cell as ``(row, col)``.
+
+        Returns:
+            The list of neighbouring cells behind a closed wall.
+        """
         opened = self.get_open_neighbors(cell)
         closed: list[tuple[int, int]] = []
         for c in self.get_neighbors(cell):
@@ -391,7 +568,12 @@ class MazeGenerator:
         return closed
 
     def remove_dead_ends(self) -> None:
-        """Open extra walls so that the maze has no dead ends."""
+        """Open extra walls so that the maze has no dead ends (braiding).
+
+        For each dead end, one closed wall is opened towards a random
+        neighbour. A wall is never opened if it would create a 3 x 3 open
+        area, so a few dead ends may remain in very tight spots.
+        """
         ends = self.get_dead_ends()
         for cell in ends:
             if not self.is_dead_end(cell):
@@ -407,7 +589,14 @@ class MazeGenerator:
             self.remove_wall_between(cell, neighbor)
 
     def count_loops(self) -> int:
-        """Return the number of independent loops in the maze."""
+        """Count the independent loops of the maze.
+
+        Uses the formula ``passages - cells + 1``. Each passage is counted
+        once by looking only at the east and south walls.
+
+        Returns:
+            The number of independent loops (0 for a perfect maze).
+        """
         cells = self.width * self.height - len(self._42_cells)
         passages = 0
         for row in range(self.height):

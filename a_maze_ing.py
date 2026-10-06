@@ -1,4 +1,8 @@
-"""Main entry point for the A-Maze-ing project."""
+"""Main entry point for the A-Maze-ing project.
+
+Usage:
+    python3 a_maze_ing.py config.txt
+"""
 
 import curses
 import sys
@@ -8,7 +12,12 @@ from interactive import run_interactive
 
 
 def main() -> None:
-    """Run the maze generator program."""
+    """Run the maze generator program.
+
+    Reads the configuration file given as the only argument, generates the
+    maze, writes it to the output file and starts the interactive display.
+    Every error is reported with a clear message instead of a crash.
+    """
     if len(sys.argv) != 2:
         print("Usage: python3 a_maze_ing.py config.txt")
         return

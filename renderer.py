@@ -1,4 +1,8 @@
-"""Unicode renderer for the A-Maze-ing project."""
+"""Unicode renderer for the A-Maze-ing project.
+
+Turns a ``MazeGenerator`` grid into lines of box-drawing characters.
+Each cell is 4 characters wide (1 wall + 3 inside) and 2 lines high.
+"""
 
 from mazegen import MazeGenerator
 
@@ -34,7 +38,20 @@ def _cell_wall(
     height: int,
     width: int,
 ) -> bool:
-    """Return the wall flag for cell (row, col) in the given direction."""
+    """Return the wall flag of a cell in one direction.
+
+    Args:
+        grid: The maze grid.
+        row: Row of the cell.
+        col: Column of the cell.
+        direction: One of ``"N"``, ``"E"``, ``"S"``, ``"W"``.
+        height: Number of rows of the maze.
+        width: Number of columns of the maze.
+
+    Returns:
+        ``True`` if the wall is closed, ``False`` if it is open or if the
+        cell is outside the maze.
+    """
     if row < 0 or row >= height or col < 0 or col >= width:
         return False
     return bool(grid[row][col][direction])
@@ -47,7 +64,21 @@ def _inner_joint(
     height: int,
     width: int,
 ) -> str:
-    """Return the box-drawing character for the interior corner at (i, j)."""
+    """Return the box-drawing character for an interior corner.
+
+    The corner is the point between cells ``(i - 1, j - 1)``,
+    ``(i - 1, j)``, ``(i, j - 1)`` and ``(i, j)``.
+
+    Args:
+        grid: The maze grid.
+        i: Row index of the corner.
+        j: Column index of the corner.
+        height: Number of rows of the maze.
+        width: Number of columns of the maze.
+
+    Returns:
+        One box-drawing character, for example ``"┼"`` or ``"└"``.
+    """
     north = _cell_wall(grid, i - 1, j - 1, "E", height, width)
     south = _cell_wall(grid, i,     j - 1, "E", height, width)
     west = _cell_wall(grid, i - 1, j - 1, "S", height, width)
@@ -56,14 +87,31 @@ def _inner_joint(
 
 
 def _top_joint(grid: Grid, j: int) -> str:
-    """Return the border character between columns on the top edge."""
+    """Return the top border character between two columns.
+
+    Args:
+        grid: The maze grid.
+        j: Column on the right of the joint.
+
+    Returns:
+        ``"╤"`` if a vertical wall starts here, ``"═"`` otherwise.
+    """
     if grid[0][j]["W"]:
         return "╤"
     return "═"
 
 
 def _bottom_joint(grid: Grid, j: int, height: int) -> str:
-    """Return the border character between columns on the bottom edge."""
+    """Return the bottom border character between two columns.
+
+    Args:
+        grid: The maze grid.
+        j: Column on the right of the joint.
+        height: Number of rows of the maze.
+
+    Returns:
+        ``"╧"`` if a vertical wall ends here, ``"═"`` otherwise.
+    """
     if grid[height - 1][j]["W"]:
         return "╧"
     return "═"
@@ -75,7 +123,20 @@ def render_maze_lines(
     exit_cell: tuple[int, int],
     path: list[tuple[int, int]],
 ) -> list[str]:
-    """Build and return the maze as a list of Unicode strings."""
+    """Build the maze as a list of Unicode strings.
+
+    Entry and exit cells are left empty: the interactive display draws
+    them on top with colours.
+
+    Args:
+        generator: The generated maze.
+        entry: Entry cell as ``(row, col)``.
+        exit_cell: Exit cell as ``(row, col)``.
+        path: Cells of the path to draw, or an empty list to hide it.
+
+    Returns:
+        The lines of the drawing, ``2 * height + 1`` lines in total.
+    """
     path_index = {cell: idx for idx, cell in enumerate(path)}
     path_len = max(len(path) - 1, 1)
     maze_lines = []
@@ -141,6 +202,13 @@ def render_maze(
     exit_cell: tuple[int, int],
     path: list[tuple[int, int]],
 ) -> None:
-    """Print the maze to stdout in Unicode box-drawing format."""
+    """Print the maze to the terminal in Unicode box-drawing format.
+
+    Args:
+        generator: The generated maze.
+        entry: Entry cell as ``(row, col)``.
+        exit_cell: Exit cell as ``(row, col)``.
+        path: Cells of the path to draw, or an empty list to hide it.
+    """
     for line in render_maze_lines(generator, entry, exit_cell, path):
         print(line)

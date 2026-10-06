@@ -5,7 +5,7 @@ CONFIG = config.txt
 
 install:
 	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install flake8 mypy
+	$(PYTHON) -m pip install flake8 mypy build virtualenv
 
 run:
 	$(PYTHON) a_maze_ing.py $(CONFIG)
@@ -15,8 +15,7 @@ debug:
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
-	rm -rf .mypy_cache
-	rm -rf .pytest_cache
+	rm -rf .mypy_cache .pytest_cache build dist mazegen.egg-info
 
 lint:
 	flake8 .

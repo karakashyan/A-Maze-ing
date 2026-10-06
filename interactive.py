@@ -1,4 +1,7 @@
-"""Interactive terminal display for the A-Maze-ing project."""
+"""Interactive terminal display for the A-Maze-ing project.
+
+Uses ``curses`` to draw the maze and react to key presses.
+"""
 
 import curses
 from mazegen import MazeGenerator
@@ -30,8 +33,17 @@ FOOD_LABEL = "🐟 "
 
 
 def _path_pair(idx: int, length: int) -> int:
-    """Return the color pair index for a path cell based on its progress."""
+    """Return the colour pair of a path cell based on its progress.
 
+    The path goes from green (start) to yellow, then red (end).
+
+    Args:
+        idx: Position of the cell in the path.
+        length: Length of the path.
+
+    Returns:
+        The curses colour pair number.
+    """
     if length == 0:
         return _PATH_A
     progress = idx / length
@@ -48,10 +60,24 @@ def run_interactive(
     exit_cell: tuple[int, int],
     path: list[tuple[int, int]],
 ) -> None:
-    """Launch the curses display loop for the maze."""
+    """Launch the curses display loop for the maze.
+
+    Keys: ``r`` regenerate, ``p`` show/hide path, ``c`` wall colours,
+    ``a`` animated regeneration, ``m`` move the cat, ``q`` quit.
+
+    Args:
+        generator: The generated maze to display first.
+        entry: Entry cell as ``(row, col)``.
+        exit_cell: Exit cell as ``(row, col)``.
+        path: Shortest path from entry to exit.
+    """
 
     def _main(stdscr: curses.window) -> None:
-        """Draw and handle the curses event loop."""
+        """Draw the maze and handle key presses until ``q``.
+
+        Args:
+            stdscr: The curses screen given by ``curses.wrapper``.
+        """
         curses.start_color()
         curses.use_default_colors()
         curses.curs_set(0)
@@ -79,7 +105,11 @@ def run_interactive(
         move_delay = 0
 
         def regenerate() -> None:
-            """Regenerate the maze, optionally with animation."""
+            """Build a new maze with the next seed.
+
+            If animation is on, the maze is drawn after each step of the
+            generation. The path and the cat are reset.
+            """
             nonlocal cur_gen, cur_path
             nonlocal animal_pos, food_visible
             nonlocal move_animation, move_index, move_delay
@@ -118,7 +148,7 @@ def run_interactive(
             move_delay = 0
 
         def _init_wall_pair() -> None:
-            """Initialize the current wall colour pair."""
+            """Apply the currently selected wall colour."""
             curses.init_pair(_WALL, _WALL_COLORS[wall_i], -1)
 
         _init_wall_pair()
